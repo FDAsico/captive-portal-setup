@@ -1,43 +1,33 @@
 <?php
-// --- CAPTIVE PORTAL DETECTION HANDLERS ---
-// Handle common captive portal detection requests
-$request_uri = $_SERVER['REQUEST_URI'] ?? '';
-$host = $_SERVER['HTTP_HOST'] ?? '';
-
-// Apple iOS/macOS detection
-if (strpos($request_uri, '/hotspot-detect.html') !== false || 
-    strpos($request_uri, '/library/test/success.html') !== false ||
-    strpos($host, 'captive.apple.com') !== false) {
-    header('HTTP/1.0 302 Found');
-    header('Location: http://10.0.0.1/index.php');
-    exit();
+// Get the device IP
+function get_client_ip() {
+    // This is a basic way to get the IP in a LAN setup.
+    // Consider more robust methods in a production environment.
+    if (isset($_SERVER['REMOTE_ADDR'])) {
+        return $_SERVER['REMOTE_ADDR'];
+    }
+    return '0.0.0.0';
 }
 
-// Android detection
-if (strpos($request_uri, '/generate_204') !== false ||
-    strpos($host, 'connectivitycheck.gstatic.com') !== false ||
-    strpos($host, 'clients3.google.com') !== false) {
-    header('HTTP/1.0 302 Found');
-    header('Location: http://10.0.0.1/index.php');
-    exit();
-}
-
-// Windows detection
-if (strpos($host, 'msftconnecttest.com') !== false ||
-    strpos($host, 'msftncsi.com') !== false) {
-    header('HTTP/1.0 302 Found');
-    header('Location: http://10.0.0.1/index.php');
-    exit();
-}
+$client_ip = get_client_ip();
 
 // --- ETHICAL HACKING LOGIC: SESSION AND DATA HANDLING ---
 session_start();
-setcookie(session_name(), session_id(), time() + 90, "/");
+setcookie(session_name(), session_id(), time() + 300, "/");
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    file_put_contents('/var/www/html/submissions.log', date("c") . " SUBMITTED\n", FILE_APPEND | LOCK_EX);
-    header("Location: success.html");
-    exit();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $client_ip != '0.0.0.0') {
+    $command = "sudo ipset -exist add allowed_clients " . escapeshellarg($client_ip) . " timeout 300";
+    exec($command, $output, $return_var);
+    if ($return_var === 0) {
+        // Success: Redirect user to a landing page or the web
+        // This redirect should happen AFTER ipset is updated
+        header("Location: success.html"); // Redirect to a success page or intended destination
+        file_put_contents('/var/www/html/submissions.log', date("c") . " SUBMITTED\n", FILE_APPEND | LOCK_EX);
+        exit("Login successful. You have 90 seconds of internet access. Redirecting...");
+    } else {
+        error_log("Failed to grant access for IP $client_ip. IPset command failed: " . implode(" ", $output));
+        echo "Failed to grant access. An error occurred.";
+    }
 }
 ?>
 
