@@ -192,7 +192,7 @@ EOF
     SOURCE_DIR="$PWD"
     DEST_DIR="/var/www/html/"
 
-    rsync -avm --progress --include="index.php" --include="footer.png" --include="logo.png" --include="success.html" --exclude="*" "$SOURCE_DIR"/ "$DEST_DIR"
+    rsync -avm --update --progress --include="index.php" --include="footer.png" --include="logo.png" --include="success.html" --exclude="*" "$SOURCE_DIR"/ "$DEST_DIR"
 
     print_success "Captive Portal Configured"
 }
